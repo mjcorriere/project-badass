@@ -1,0 +1,72 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <style>
+      body {
+        margin: 0px;
+        padding: 0px;
+      }
+    </style>
+  </head>
+  <body>
+
+    <script src="underscore/underscore.js" type="text/javascript"></script>    
+    <canvas id="render-window" width="578" height="200" style="border:1px dotted;float:left"></canvas>
+    <script>
+
+        window.requestAnimFrame = (function(callback) 
+        {
+        return window.requestAnimationFrame || window.webkitRequestAnimationFrame || window.mozRequestAnimationFrame 
+            || window.oRequestAnimationFrame || window.msRequestAnimationFrame ||
+            function(callback) {
+                window.setTimeout(callback, 1000 / 60);
+            };
+        })();
+
+        function drawParticle(particle, context)
+        {
+            context.beginPath();
+
+            context.arc(particle.x, particle.y, particle.radius, 2 * Math.PI, false);
+
+            context.fill();
+        }
+
+        var
+            particles = [ { x : 100, y : 150, radius : 10 }, {x : 20, y : 50, radius : 10} ];
+
+        function animate(particles, canvas, context, startTime) 
+        {
+            // update
+            var time = (new Date()).getTime() - startTime;
+
+            // clear
+            context.clearRect(0, 0, canvas.width, canvas.height);
+
+            // move it move it
+            _.each(particles, function(particle) 
+            {
+                // TODO: apply integrator
+                //
+                drawParticle(particle, context);
+            });
+
+            // request new frame
+            requestAnimFrame(function() {
+              animate(particles, canvas, context, startTime);
+            });
+        }
+
+        var canvas = document.getElementById('render-window');
+        var context = canvas.getContext('2d');
+
+        // wait one second before starting animation
+        setTimeout(function() 
+        {
+            var startTime = (new Date()).getTime();
+            animate(particles, canvas, context, startTime);
+        }, 1000);
+
+    </script>
+  </body>
+</html>
