@@ -23,17 +23,26 @@
             };
         })();
 
+        function sigh(rgb)
+        {
+            return 'rgb(' + rgb.join(',') + ')';
+        }
+
         function drawParticle(particle, context)
         {
             context.beginPath();
 
+            context.fillStyle=sigh(particle.style.color);
             context.arc(particle.x, particle.y, particle.radius, 2 * Math.PI, false);
 
             context.fill();
         }
 
         var
-            particles = [ { x : 100, y : 150, radius : 10 }, {x : 20, y : 50, radius : 10} ];
+            particles = [
+                { x : 100, y : 150, radius : 10, style : { color : [128, 128, 128] } }, 
+                { x : 20, y : 50, radius : 10, style : { color : [50, 0, 255] } } ],
+            forces = [ { x : 0.01, y : 0.003 }, { x : .005, y : -0.001 }];
 
         function animate(particles, canvas, context, startTime) 
         {
@@ -44,10 +53,19 @@
             context.clearRect(0, 0, canvas.width, canvas.height);
 
             // move it move it
+            _.each(_.zip(particles, forces), function(particle_and_force)
+            {
+                var
+                    particle = particle_and_force[0],
+                    force = particle_and_force[1];
+
+                particle.x += force.x * time;
+                particle.y += force.y * time;
+            });
+
+            // draw it
             _.each(particles, function(particle) 
             {
-                // TODO: apply integrator
-                //
                 drawParticle(particle, context);
             });
 
