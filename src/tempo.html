@@ -32,36 +32,104 @@
         {
             context.beginPath();
 
-            context.fillStyle=sigh(particle.style.color);
-            context.arc(particle.x, particle.y, particle.radius, 2 * Math.PI, false);
+            context.fillStyle=sigh(particle.color);
+            context.arc(particle.position[0], particle.position[1], particle.radius, 2 * Math.PI, false);
 
             context.fill();
         }
 
         var
+            potentials = {
+
+                id : function(pos) { return pos; },
+                spring : function(k, pos) { return { x : -k * pos.x, y : -k * pos.y } }
+            },
+            linear_force = function(f_x, f_y) { 
+                return function(pos, dt) { [ pos.x + (f_x * dt), pos.y + (f_y * dt) ]; } 
+            },
+            harmonic_force = function(c1, c2, k, m) {
+                return function (pos, dt) { return pos; }
+            },
+            particle_forces = [ 
+                { force : linear_force(0.01, 0.003)   },
+                { force : linear_force(0.005, -0.001) },
+                { force : harmonic_force(0, 0, 0, 0)  }
+            ],
+            Particle = function(_mass, _position, _radius, _color, _velocity, _forces)
+            {
+                return {
+
+                    mass : _mass ? _mass : 0.0,
+                    position : _position ? _position : [0.0, 0.0],
+                    velocity : _velocity ? _velocity : [0.0, 0.0],
+                    forces : _forces ? _forces : [0.0, 0.0],
+                    radius : _radisu ? _radius : 5.0,
+                    color : _color ? _color : [0.5 * 255, 0.5 * 255, 0.5 * 255]
+                };
+            },
             particles = [
-                { x : 100, y : 150, radius : 10, style : { color : [128, 128, 128] } }, 
-                { x : 20, y : 50, radius : 10, style : { color : [50, 0, 255] } } ],
-            forces = [ { x : 0.01, y : 0.003 }, { x : .005, y : -0.001 }];
+                Particle(1.0, [100, 150], 5),
+                Particle(1.0, [20, 50], 5, [0.0 * 255, 0.3 * 255, 0.5 * 255]),
+                Particle(1.0, [40, 80], 5, [0.5 * 255, 0.3 * 255, 0.0 * 255])
+            ];
+
+        function clear_forces(particles)
+        {
+            _.each(particles, function(particle) {
+
+                particle.forces = [0.0, 0.0];
+
+            });
+        }
+
+        function compute_forces(particles)
+        {
+            // For this simple system, aside from the initial impulses the only forces
+            // are those arising from inelastic collisions
+            for(var i = 0; i < particles.length; i++)
+            {
+                for(var j = 0; j < particles.length; j++)
+                {
+                    if (i == j) continue;
+
+                    // TODO: if p_i intersects p_j, resolve collision into components and generate force vector
+
+                    // TODO: also intersect with board
+                }
+            }
+        }
+
+        function step(particles, dt)
+        {
+            // TODO: parameterize integrator
+            //
+            _.each(particles, function(particlee)
+            {
+                // First apply the direct force
+                particle.velocity[0] += particle.forces[0] * dt;
+                particle.velocity[1] += particle.forces[1] * dt;
+
+                particle.position[0] += particle.velocity[0] * dt;
+                particle.position[1] += particle.velocity[1] * dt;
+
+                // Then the indirect
+                //particle = force.potential(particle);
+            });
+        }
 
         function animate(particles, canvas, context, startTime) 
         {
-            // update
+            // TODO: whither impulses?
+
+            // TODO: use a fixed timestep
             var time = (new Date()).getTime() - startTime;
 
             // clear
             context.clearRect(0, 0, canvas.width, canvas.height);
 
-            // move it move it
-            _.each(_.zip(particles, forces), function(particle_and_force)
-            {
-                var
-                    particle = particle_and_force[0],
-                    force = particle_and_force[1];
-
-                particle.x += force.x * time;
-                particle.y += force.y * time;
-            });
+            clear_forces(particles);
+            compute_forces(particles);
+            step(particles, time);
 
             // draw it
             _.each(particles, function(particle) 
