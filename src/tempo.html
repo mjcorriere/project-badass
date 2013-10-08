@@ -82,6 +82,45 @@
             });
         }
 
+        function sum(a, b)
+        {
+            return [a[0] + b[0], a[1] + b[1]];
+        }
+
+        function diff (a, b)
+        {
+            return [a[0] - b[0], a[1] - b[1]];
+        }
+
+        function dot(a, b)
+        {
+            return a[0] * b[0] + a[1] * b[1];
+        }
+
+        function length(a)
+        {
+            return Math.sqrt(dot(a, a));
+        }
+
+        function scale(a, f)
+        {
+            return [f * a[0], f * a[1]];
+        }
+
+        function normalized(a)
+        {
+            return scale(1.0 / length(a), a);
+        }
+
+        function reflect(v, n)
+        {
+            var
+                b = diff(n, v),
+                a = dot(n, v) * 2.0; 
+
+            return scale(b, a);
+        }
+
         function compute_forces(particles)
         {
             // For this simple system, aside from the initial impulses the only forces
@@ -92,9 +131,43 @@
                 {
                     if (i == j) continue;
 
-                    // TODO: if p_i intersects p_j, resolve collision into components and generate force vector
+                    var
+                        delta = diff(particles[i].position, particles[j].position),
+                        dir = particles[i].velocity,
+                        r = particles[j].radius;
 
-                    // TODO: also intersect with board
+                    var
+                        discrim = Math.pow(dot(delta, dir), 2) - (dot(dir, dir) * (dot(delta, delta) - r * r));
+
+                    if (discrim > 0)
+                    {
+
+                        var
+                            dir_squared_length = dot(dir, dir); 
+                            dir_dot_delta = dot(scale(dir, -1), delta),
+                            abs_discrim_root = Math.sqrt(discrim);
+
+                        var 
+                            plus_t = (dir_dot_delta + abs_discrim_root) / dir_squared_length,
+                            minus_t = (dir_dot_delta - abs_discrim_root) / dir_squared_length;
+
+                        var
+                            intersection_t = Math.min(plus_t, minus_t);
+
+                        var
+                            intersection_point = sum(particles[i].position, scale(normalized(dir), intersection_t));
+
+                        var
+                            n_i = normalized(diff(intersection_point, particles[i].position)),
+                            n_j = normalized(diff(intersection_point, particles[j].position));
+
+                        var
+                            reflected_i = reflect(particles[i].velocity, n_j),
+                            reflected_j = reflect(particles[j].velocity, n_i);
+
+                        particles[i].velocity = reflected_i;
+                        particles[j].velocity = reflected_j;
+                    }
                 }
             }
         }
