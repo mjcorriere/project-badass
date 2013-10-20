@@ -25,7 +25,8 @@
 
         function sigh(rgb)
         {
-            return 'rgb(' + rgb.join(',') + ')';
+            ceiled = _.map(rgb, Math.ceil);
+            return 'rgb(' + ceiled.join(',') + ')';
         }
 
         function drawParticle(particle, context)
@@ -68,9 +69,13 @@
                 };
             },
             particles = [
+                Particle(1.0, [100, 150], 5, [0.5 * 255, 0.5 * 255, 0.5 * 255], [0.5, 0.0]),
+                Particle(1.0, [320, 150],   5, [0.0 * 255, 0.3 * 255, 0.5 * 255], [-0.5, 0.0]),
+            /*
                 Particle(1.0, [100, 150], 5, [0.5 * 255, 0.5 * 255, 0.5 * 255], [0.5, 0.1]),
                 Particle(1.0, [20, 50],   5, [0.0 * 255, 0.3 * 255, 0.5 * 255], [-0.3, 0.2]),
                 Particle(1.0, [40, 80],   5, [0.5 * 255, 0.3 * 255, 0.0 * 255], [-0.1, -0.2])
+            */
             ];
 
         function clear_forces(particles)
@@ -109,16 +114,89 @@
 
         function normalized(a)
         {
-            return scale(1.0 / length(a), a);
+            return scale(a, 1.0 / length(a));
         }
 
         function reflect(v, n)
         {
             var
-                b = diff(n, v),
-                a = dot(n, v) * 2.0; 
+                coeff = 2.0 * dot(n, v);
 
-            return scale(b, a);
+            return diff(v, scale(n, coeff));
+        }
+
+        function perp(v)
+        {
+            return [v[1], -v[0]];
+        }
+
+        function intersect_particles(one, two)
+        {
+            var
+                delta = diff(one.position, two.position),
+                dir = one.velocity,
+                r = two.radius;
+
+            var
+                discrim = Math.pow(dot(delta, dir), 2) - (dot(dir, dir) * (dot(delta, delta) - r * r));
+
+            if (discrim > 0)
+            {
+
+                var
+                    dir_squared_length = dot(dir, dir); 
+                    dir_dot_delta = dot(scale(dir, -1), delta),
+                    abs_discrim_root = Math.sqrt(discrim);
+
+                var 
+                    plus_t = (dir_dot_delta + abs_discrim_root) / dir_squared_length,
+                    minus_t = (dir_dot_delta - abs_discrim_root) / dir_squared_length;
+
+                var
+                    intersection_t = Math.min(plus_t, minus_t);
+
+                var
+                    intersection_point = sum(one.position, scale(normalized(dir), intersection_t));
+
+                var
+                    n_i = normalized(diff(intersection_point, one.position)),
+                    n_j = normalized(diff(intersection_point, two.position));
+
+                var
+                    reflected_i = reflect(one.velocity, n_j),
+                    reflected_j = reflect(two.velocity, n_i);
+
+                one.velocity = reflected_i;
+                two.velocity = reflected_j;
+            }
+        }
+
+        function intersect_particles2(one, two)
+        {
+            var
+                spoke = diff(two.position, one.position),
+                unital_spoke = normalized(spoke),
+                rad = perp(spoke);
+
+            var
+                diff_squared_radii = one.radius * one.radius - two.radius * two.radius;
+                squared_spoke_length = dot(spoke, spoke);
+
+            var
+                s = 0.5 * ((diff_squared_radii / squared_spoke_length) + 1),
+                t = ((one.radius * one.radius) / squared_spoke_length) - s * s;
+
+            var
+                l0 = length(spoke),
+                l1 = one.radius - two.radius,
+                l2 = one.radius + two.radius;
+
+            if (l1 < l0 && l2 > l0)
+            {
+                // This is lame
+                one.forces = sum(one.forces, scale(reflect(one.velocity, unital_spoke), 2.0));
+                //two.forces = sum(two.forces, reflect(two.velocity, unital_spoke));
+            }
         }
 
         function compute_forces(particles)
@@ -131,43 +209,8 @@
                 {
                     if (i == j) continue;
 
-                    var
-                        delta = diff(particles[i].position, particles[j].position),
-                        dir = particles[i].velocity,
-                        r = particles[j].radius;
-
-                    var
-                        discrim = Math.pow(dot(delta, dir), 2) - (dot(dir, dir) * (dot(delta, delta) - r * r));
-
-                    if (discrim > 0)
-                    {
-
-                        var
-                            dir_squared_length = dot(dir, dir); 
-                            dir_dot_delta = dot(scale(dir, -1), delta),
-                            abs_discrim_root = Math.sqrt(discrim);
-
-                        var 
-                            plus_t = (dir_dot_delta + abs_discrim_root) / dir_squared_length,
-                            minus_t = (dir_dot_delta - abs_discrim_root) / dir_squared_length;
-
-                        var
-                            intersection_t = Math.min(plus_t, minus_t);
-
-                        var
-                            intersection_point = sum(particles[i].position, scale(normalized(dir), intersection_t));
-
-                        var
-                            n_i = normalized(diff(intersection_point, particles[i].position)),
-                            n_j = normalized(diff(intersection_point, particles[j].position));
-
-                        var
-                            reflected_i = reflect(particles[i].velocity, n_j),
-                            reflected_j = reflect(particles[j].velocity, n_i);
-
-                        particles[i].velocity = reflected_i;
-                        particles[j].velocity = reflected_j;
-                    }
+                    intersect_particles2(particles[i], particles[j]);
+                    //intersect_particles(particles[i], particles[j]);
                 }
             }
         }
@@ -193,8 +236,8 @@
             _.each(particles, function(particle)
             {
                 // First apply the direct force
-                particle.velocity[0] += (particle.forces[0] * dt);
-                particle.velocity[1] += (particle.forces[1] * dt);
+                particle.velocity[0] += (particle.forces[0]);// * dt);
+                particle.velocity[1] += (particle.forces[1]);// * dt);
 
                 particle.position[0] += particle.velocity[0] * dt;
                 particle.position[1] += particle.velocity[1] * dt;
